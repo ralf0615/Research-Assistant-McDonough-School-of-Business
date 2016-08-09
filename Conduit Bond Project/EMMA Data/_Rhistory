@@ -1,0 +1,512 @@
+final = rbind.fill(final,temp.moody)
+}
+for(s in (1:length(sp.index))){
+temp.sp = data.frame(a,b,c,d,e,f,g,h,ipo,NA,NA,NA,NA,NA,NA,NA,SP.temp$Rating[sp.index[s]],SP.temp$Date[sp.index[s]],SP.temp$Regulartory[sp.index[s]],SP.temp$Credit[sp.index[s]],SP.temp$Credit.Date[sp.index[s]],link)
+colnames(temp.sp) = c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v")
+final = rbind.fill(final,temp.sp)
+}
+}
+)
+time.final
+View(final)
+final = data.frame(a=character(198524),b=character(198524),c=character(198524),d=character(198524),e=character(198524),f=character(198524),g=character(198524),h=character(198524),i=character(198524),j=character(198524),k=character(198524),l=character(198524),m=character(198524),n=character(198524),o=character(198524),p=character(198524),q=character(198524),r=character(198524),s=character(198524),t=character(198524),u=character(198524),v=character(198524),stringsAsFactors = F)
+str(final)
+final$a[1] = "ad"
+final = data.frame(a=character(198524),b=character(198524),c=character(198524),d=character(198524),e=character(198524),f=character(198524),g=character(198524),h=character(198524),i=character(198524),j=character(198524),k=character(198524),l=character(198524),m=character(198524),n=character(198524),o=character(198524),p=character(198524),q=character(198524),r=character(198524),s=character(198524),t=character(198524),u=character(198524),v=character(198524),stringsAsFactors = F)
+final = data.frame(a=character(198524),b=character(198524),c=character(198524),d=character(198524),e=character(198524),f=character(198524),g=character(198524),h=character(198524),i=character(198524),j=character(198524),k=character(198524),l=character(198524),m=character(198524),n=character(198524),o=character(198524),p=character(198524),q=character(198524),r=character(198524),s=character(198524),t=character(198524),u=character(198524),v=character(198524),stringsAsFactors = F)
+index = 1
+time.final = system.time(
+for(i in (1:32011)){
+print(i)
+a.1=conduit.bond.unique.cusip$State[i]
+b.1=conduit.bond.unique.cusip$CUSIP[i]
+c.1=conduit.bond.unique.cusip$Security.Discription[i]
+d.1=conduit.bond.unique.cusip$Security.Detail[i]
+e.1=conduit.bond.unique.cusip$Maturity.Date[i]
+f.1=conduit.bond.unique.cusip$Dated.Date[i]
+g.1=conduit.bond.unique.cusip$Principal.Amount.at.Issurance[i]
+h.1=conduit.bond.unique.cusip$Interest.Rate[i]
+ipo=conduit.bond.unique.cusip$Initial.Offering.Price.Yield[i]
+emma.link=as.character(conduit.bond.unique.cusip$Links[i])
+moody.index = which(moody.historic.copy$CUSIP==b)
+fitch.index = which(Fitch.historic$CUSIP==b)
+sp.index = which(SP.temp$CUSIP==b)
+for(J in (1:length(fitch.index))){
+final$a[index]=a.1
+final$b[index]=b.1
+final$c[index]=c.1
+final$d[index]=d.1
+final$e[index]=e.1
+final$f[index]=f.1
+final$g[index]=g.1
+final$h[index]=h.1
+final$i[index]=ipo
+final$j[index]=Fitch.historic$Rating[fitch.index[J]]
+final$k[index]=Fitch.historic$Date[fitch.index[J]]
+final$l[index]=Fitch.historic$Action[fitch.index[J]]
+final$m[index]=Fitch.historic$Misc[fitch.index[J]]
+final$v[index]=emma.link
+index = index+1
+}
+for(K in (1:length(moody.index))){
+final$a[index]=a.1
+final$b[index]=b.1
+final$c[index]=c.1
+final$d[index]=d.1
+final$e[index]=e.1
+final$f[index]=f.1
+final$g[index]=g.1
+final$h[index]=h.1
+final$i[index]=ipo
+final$n[index]=moody.historic.copy$Rating[moody.index[K]]
+final$o[index]=moody.historic.copy$Date[moody.index[K]]
+final$p[index]=moody.historic.copy$`Type/Action`[moody.index[K]]
+final$v[index]=emma.link
+index = index+1
+}
+for(S in (1:length(sp.index))){
+final$a[index]=a.1
+final$b[index]=b.1
+final$c[index]=c.1
+final$d[index]=d.1
+final$e[index]=e.1
+final$f[index]=f.1
+final$g[index]=g.1
+final$h[index]=h.1
+final$i[index]=ipo
+final$q[index]=SP.temp$Rating[sp.index[S]]
+final$r[index]=SP.temp$Date[sp.index[S]]
+final$s[index]=SP.temp$Regulartory[sp.index[S]]
+final$t[index]=SP.temp$Credit[sp.index[S]]
+final$u[index]=SP.temp$Credit.Date[sp.index[S]]
+final$v[index]=emma.link
+index = index+1
+}
+}
+)
+str(final)
+a.1
+as.character(a.1)
+i=1
+a.1=conduit.bond.unique.cusip$State[i]
+b.1=conduit.bond.unique.cusip$CUSIP[i]
+c.1=conduit.bond.unique.cusip$Security.Discription[i]
+d.1=conduit.bond.unique.cusip$Security.Detail[i]
+e.1=conduit.bond.unique.cusip$Maturity.Date[i]
+f.1=conduit.bond.unique.cusip$Dated.Date[i]
+g.1=conduit.bond.unique.cusip$Principal.Amount.at.Issurance[i]
+h.1=conduit.bond.unique.cusip$Interest.Rate[i]
+g.1
+final = data.frame(a=character(198524),b=character(198524),c=character(198524),d=character(198524),e=character(198524),f=character(198524),g=character(198524),h=character(198524),i=character(198524),j=character(198524),k=character(198524),l=character(198524),m=character(198524),n=character(198524),o=character(198524),p=character(198524),q=character(198524),r=character(198524),s=character(198524),t=character(198524),u=character(198524),v=character(198524),stringsAsFactors = F)
+index = 1
+time.final = system.time(
+for(i in (1:32011)){
+print(i)
+a.1=conduit.bond.unique.cusip$State[i]
+b.1=conduit.bond.unique.cusip$CUSIP[i]
+c.1=conduit.bond.unique.cusip$Security.Discription[i]
+d.1=conduit.bond.unique.cusip$Security.Detail[i]
+e.1=conduit.bond.unique.cusip$Maturity.Date[i]
+f.1=conduit.bond.unique.cusip$Dated.Date[i]
+g.1=conduit.bond.unique.cusip$Principal.Amount.at.Issurance[i]
+h.1=conduit.bond.unique.cusip$Interest.Rate[i]
+ipo=conduit.bond.unique.cusip$Initial.Offering.Price.Yield[i]
+emma.link=as.character(conduit.bond.unique.cusip$Links[i])
+moody.index = which(moody.historic.copy$CUSIP==b)
+fitch.index = which(Fitch.historic$CUSIP==b)
+sp.index = which(SP.temp$CUSIP==b)
+for(J in (1:length(fitch.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$j[index]=Fitch.historic$Rating[fitch.index[J]]
+final$k[index]=Fitch.historic$Date[fitch.index[J]]
+final$l[index]=Fitch.historic$Action[fitch.index[J]]
+final$m[index]=Fitch.historic$Misc[fitch.index[J]]
+final$v[index]=emma.link
+index = index+1
+}
+for(K in (1:length(moody.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$n[index]=moody.historic.copy$Rating[moody.index[K]]
+final$o[index]=moody.historic.copy$Date[moody.index[K]]
+final$p[index]=moody.historic.copy$`Type/Action`[moody.index[K]]
+final$v[index]=emma.link
+index = index+1
+}
+for(S in (1:length(sp.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$q[index]=SP.temp$Rating[sp.index[S]]
+final$r[index]=SP.temp$Date[sp.index[S]]
+final$s[index]=SP.temp$Regulartory[sp.index[S]]
+final$t[index]=SP.temp$Credit[sp.index[S]]
+final$u[index]=SP.temp$Credit.Date[sp.index[S]]
+final$v[index]=emma.link
+index = index+1
+}
+}
+)
+library(plyr)
+final = data.frame(a=character(266666),b=character(266666),c=character(266666),d=character(266666),e=character(266666),f=character(266666),g=character(266666),h=character(266666),i=character(266666),j=character(266666),k=character(266666),l=character(266666),m=character(266666),n=character(266666),o=character(266666),p=character(266666),q=character(266666),r=character(266666),s=character(266666),t=character(266666),u=character(266666),v=character(266666),stringsAsFactors = F)
+index = 1
+time.final = system.time(
+for(i in (1:32011)){
+print(i)
+a.1=conduit.bond.unique.cusip$State[i]
+b.1=conduit.bond.unique.cusip$CUSIP[i]
+c.1=conduit.bond.unique.cusip$Security.Discription[i]
+d.1=conduit.bond.unique.cusip$Security.Detail[i]
+e.1=conduit.bond.unique.cusip$Maturity.Date[i]
+f.1=conduit.bond.unique.cusip$Dated.Date[i]
+g.1=conduit.bond.unique.cusip$Principal.Amount.at.Issurance[i]
+h.1=conduit.bond.unique.cusip$Interest.Rate[i]
+ipo=conduit.bond.unique.cusip$Initial.Offering.Price.Yield[i]
+emma.link=as.character(conduit.bond.unique.cusip$Links[i])
+moody.index = which(moody.historic.copy$CUSIP==b)
+fitch.index = which(Fitch.historic$CUSIP==b)
+sp.index = which(SP.temp$CUSIP==b)
+for(J in (1:length(fitch.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$j[index]=Fitch.historic$Rating[fitch.index[J]]
+final$k[index]=Fitch.historic$Date[fitch.index[J]]
+final$l[index]=Fitch.historic$Action[fitch.index[J]]
+final$m[index]=Fitch.historic$Misc[fitch.index[J]]
+final$v[index]=emma.link
+index = index+1
+}
+for(K in (1:length(moody.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$n[index]=moody.historic.copy$Rating[moody.index[K]]
+final$o[index]=moody.historic.copy$Date[moody.index[K]]
+final$p[index]=moody.historic.copy$`Type/Action`[moody.index[K]]
+final$v[index]=emma.link
+index = index+1
+}
+for(S in (1:length(sp.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$q[index]=SP.temp$Rating[sp.index[S]]
+final$r[index]=SP.temp$Date[sp.index[S]]
+final$s[index]=SP.temp$Regulartory[sp.index[S]]
+final$t[index]=SP.temp$Credit[sp.index[S]]
+final$u[index]=SP.temp$Credit.Date[sp.index[S]]
+final$v[index]=emma.link
+index = index+1
+}
+}
+)
+final = data.frame(a=character(266666),b=character(266666),c=character(266666),d=character(266666),e=character(266666),f=character(266666),g=character(266666),h=character(266666),i=character(266666),j=character(266666),k=character(266666),l=character(266666),m=character(266666),n=character(266666),o=character(266666),p=character(266666),q=character(266666),r=character(266666),s=character(266666),t=character(266666),u=character(266666),v=character(266666),stringsAsFactors = F)
+index = 1
+time.final = system.time(
+for(i in (1:32011)){
+print(i)
+a.1=conduit.bond.unique.cusip$State[i]
+b.1=conduit.bond.unique.cusip$CUSIP[i]
+c.1=conduit.bond.unique.cusip$Security.Discription[i]
+d.1=conduit.bond.unique.cusip$Security.Detail[i]
+e.1=conduit.bond.unique.cusip$Maturity.Date[i]
+f.1=conduit.bond.unique.cusip$Dated.Date[i]
+g.1=conduit.bond.unique.cusip$Principal.Amount.at.Issurance[i]
+h.1=conduit.bond.unique.cusip$Interest.Rate[i]
+ipo=conduit.bond.unique.cusip$Initial.Offering.Price.Yield[i]
+emma.link=as.character(conduit.bond.unique.cusip$Links[i])
+moody.index = which(moody.historic.copy$CUSIP==b.1)
+fitch.index = which(Fitch.historic$CUSIP==b.1)
+sp.index = which(SP.temp$CUSIP==b.1)
+for(J in (1:length(fitch.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$j[index]=Fitch.historic$Rating[fitch.index[J]]
+final$k[index]=Fitch.historic$Date[fitch.index[J]]
+final$l[index]=Fitch.historic$Action[fitch.index[J]]
+final$m[index]=Fitch.historic$Misc[fitch.index[J]]
+final$v[index]=emma.link
+index = index+1
+}
+for(K in (1:length(moody.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$n[index]=moody.historic.copy$Rating[moody.index[K]]
+final$o[index]=moody.historic.copy$Date[moody.index[K]]
+final$p[index]=moody.historic.copy$`Type/Action`[moody.index[K]]
+final$v[index]=emma.link
+index = index+1
+}
+for(S in (1:length(sp.index))){
+final$a[index]=as.character(a.1)
+final$b[index]=as.character(b.1)
+final$c[index]=as.character(c.1)
+final$d[index]=as.character(d.1)
+final$e[index]=as.character(e.1)
+final$f[index]=as.character(f.1)
+final$g[index]=as.character(g.1)
+final$h[index]=as.character(h.1)
+final$i[index]=ipo
+final$q[index]=SP.temp$Rating[sp.index[S]]
+final$r[index]=SP.temp$Date[sp.index[S]]
+final$s[index]=SP.temp$Regulartory[sp.index[S]]
+final$t[index]=SP.temp$Credit[sp.index[S]]
+final$u[index]=SP.temp$Credit.Date[sp.index[S]]
+final$v[index]=emma.link
+index = index+1
+}
+}
+)
+final.copy = gubs("NA",NA,final)
+final.copy = gsubs("NA",NA,final)
+final.copy = gsub("NA",NA,final)
+str(final)
+final.copy = lapply(final, gsub("NA",NA))
+final.copy = lapply(final, function(x) gsub("NA",NA,x))
+final.copy = as.data.frame(final.copy)
+View(final.copy)
+time.final
+dir()
+col.name = colnames(read.csv("Conduit Bond - Historical Rating.csv",col.names = T,stringsAsFactors = F))
+col.name = colnames(read.csv("Conduit Bond - Historical Rating.csv",header = T,stringsAsFactors = F))
+col.name
+colnames(final.copy) = col.name
+write.table(final.copy,"Conduit Bond - With Rating History.csv",col.names = T,row.names = F)
+write.table(final.copy,"Conduit Bond - With Rating History.csv",col.names = T,row.names = F,sep = ",")
+final.copy$Fitch[1]
+str(final.copy)
+final.copy = as.data.frame(final.copy,stringsAsFactors=F)
+str(final.copy)
+final.copy <- data.frame(lapply(final.copy, as.character), stringsAsFactors=FALSE)
+str(final.copy)
+final.copy$Fitch[1]
+final.copy$Fitch[]
+final.copy$Fitch[2]
+final.copy = lapply(final, function(x) gsub("NA",NA,x))
+final.copy = lapply(final.copy, function(x) gsub("",NA,x))
+final.copy = lapply(final, function(x) gsub("NA",NA,x))
+final.copy <- data.frame(lapply(final.copy, as.character), stringsAsFactors=FALSE)
+View(final.copy)
+final.copy.1 = unique(final.copy)
+View(final.copy.1)
+nchar(final.copy$Fitch[2])
+nchar(final.copy$Fitch[1])
+nchar(final.copy$Fitch[1])==0
+length(final.copy$Fitch[1])
+length(final.copy$Fitch[2])
+length(final.copy)
+length(final.copy$f[3])
+for(i in dim(final.copy[1])){
+for(j in (1:22)){
+if(length(final.copy[i,j])==0){
+final.copy[i,j] = NA
+}
+}
+}
+dim(final.copy[1])
+for(i in dim(final.copy)[1]){
+for(j in (1:22)){
+if(length(final.copy[i,j])==0){
+final.copy[i,j] = NA
+}
+}
+}
+length(final.copy[2,7])
+final.copy[2,7]
+final.copy[2,10]
+length(final.copy[2,10])
+nchar(final.copy[2,10])
+nchar(final.copy[2,7])
+for(i in dim(final.copy)[1]){
+for(j in (1:22)){
+if(nchar(final.copy[i,j])==0){
+final.copy[i,j] = NA
+}
+}
+}
+final.copy <- data.frame(lapply(final, as.character), stringsAsFactors=FALSE)
+for(i in dim(final.copy)[1]){
+for(j in (1:22)){
+if(nchar(final.copy[i,j])==0){
+final.copy[i,j] = "NA"
+}
+}
+}
+nchar(final.copy[2,10])
+nchar(final.copy[2,7])
+final.copy = lapply(final, function(x) gsub(NA,"NA",x))
+View(final)
+final.copy = lapply(final, function(x) gsub("NA",NA,x))
+final.copy <- data.frame(lapply(final.copy, as.character), stringsAsFactors=FALSE)
+View(final.copy)
+nchar(final.copy[1,7])
+nchar(final.copy[1,14])
+for(i in dim(final.copy)[1]){
+for(j in (1:22)){
+if(nchar(final.copy[i,j])==0){
+final.copy[i,j] = "NA"
+}
+}
+}
+final.copy[1,14]
+final.copy[1,14]==NA
+final.copy[1,14]=NA
+final.copy[1,14]="NA"
+i=1
+j=14
+nchar(final.copy[i,j])==0
+for(i in dim(final.copy)[1]){
+for(j in (1:22)){
+if(nchar(final.copy[i,j])==0){
+final.copy[i,j] = "NA"
+}
+}
+}
+final.copy = lapply(final, function(x) gsub("NA",NA,x))
+final.copy <- data.frame(lapply(final.copy, as.character), stringsAsFactors=FALSE)
+final.copy[1,14]==""
+final.copy[1,13]==""
+for(i in dim(final.copy)[1]){
+for(j in (1:22)){
+if(final.copy[i,j]==""){
+final.copy[i,j] = NA
+}
+}
+}
+final.copy[1,13]==""
+final.copy[1,14]==""
+final.copy[1,14]==NA
+final.copy[1,14]=NA
+View(final.copy)
+for(i in (1:dim(final.copy)[1])){
+for(j in (1:22)){
+if(final.copy[i,j]==""){
+final.copy[i,j] = NA
+}
+}
+}
+for(i in (1:dim(final.copy)[1])){
+for(j in (1:22)){
+if(nchar(final.copy[i,j])==0){
+final.copy[i,j] = NA
+}
+}
+}
+View(final.copy)
+nchar(final[34527,3])
+final.copy = lapply(final, function(x) gsub("NA",NA,x))
+final.copy <- data.frame(lapply(final.copy, as.character), stringsAsFactors=FALSE)
+final.copy[34527,]
+final[34527,]
+summary(final$c)
+table(final$c)
+table(is.na(final$c))
+table(is.na(final.copy$c))
+final.copy <- data.frame(lapply(final.copy, as.character), stringsAsFactors=FALSE)
+table(is.na(final.copy$c))
+final.copy <- data.frame(lapply(final, as.character), stringsAsFactors=FALSE)
+table(is.na(final.copy$c))
+for(i in (1:dim(final.copy)[1])){
+for(j in (1:22)){
+if(nchar(final.copy[i,j])==0){
+final.copy[i,j] = NA
+}
+}
+}
+final.copy <- data.frame(lapply(final, as.character), stringsAsFactors=FALSE)
+for(i in (1:dim(final.copy)[1])){
+for(j in (1:22)){
+if(nchar(final.copy[i,j])==0){
+final.copy[i,j] = "NA"
+}
+}
+}
+nchar(final.copy[1,7])
+is.na(final.copy[1,7])
+final.copy <- data.frame(lapply(final, as.character), stringsAsFactors=FALSE)
+for(i in (1:dim(final.copy)[1])){
+for(j in (1:22)){
+if(nchar(final.copy[i,j])==0|is.na(final.copy[i,j])){
+final.copy[i,j] = "NA"
+}
+}
+}
+final.copy = final.copy[1:200000,]
+final.copy.unique = unique(final.copy)
+View(final.copy.unique)
+table(final.copy.unique$q)
+View(SP.historic.copy)
+View(SP.temp)
+col.name = colnames(read.csv("Conduit Bond - Historical Rating.csv",header = T,stringsAsFactors = F))
+colnames(final.copy.unique) = col.name
+write.table(final.copy.unique,"Conduit Bond – 5/24/16.csv",col.names = T,row.names = F,sep = ",")
+colnames(final.copy.unique) = col.name
+write.table(final.copy.unique,"Conduit Bond – 5/24/16.csv",col.names = T,row.names = F,sep = ",")
+write.csv(final.copy.unique,"Conduit Bond – 5/24/16.csv",col.names = T,row.names = F,sep = ",")
+write.table(final.copy.unique,"Conduit Bond – 5/24/16.csv",col.names = T,row.names = F,sep = ",")
+dir()\
+dir(0)
+dir()
+write.table(final.copy.unique,"Conduit Bond – 5/24/16.csv",col.names = T,row.names = F,sep = ",")
+write.csv(final.copy.unique,"Conduit Bond – 5/24/16.csv")
+write.csv(final.copy.unique,"Conduit Bond – 5/24/16.csv")
+write.csv(final.copy.unique,"Conduit Bond – 5-24-16.csv")
+View(final.copy)
+View(final.copy.1)
+final.copy.unique$CUSIP = paste("#",final.copy.unique$CUSIP)
+View(final.copy.unique)
+write.csv(final.copy.unique,"Conduit Bond - 5-24-16.csv")

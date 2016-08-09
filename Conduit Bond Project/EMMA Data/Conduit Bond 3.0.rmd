@@ -1,0 +1,1197 @@
+---
+title: "Conduit Bond 3.0"
+author: "Yuchen Li"
+date: "April 16, 2016"
+output: html_document
+---
+
+###CUSIP check digit
+```{r echo=FALSE}
+position = function(a)
+{
+    letters=toupper(letters)
+    return (which(letters==a)+9)
+}
+
+digitsum <- function(x) sum(floor(x / 10^(0:(nchar(x) - 1))) %% 10)
+
+checkDigit = function(b)
+{
+    require(qmrparser)
+    if(nchar(b)==9 && isDigit(substr(b,9,9)))
+    {
+        sum=0
+        for (i in 1:8)
+        {
+            x=substr(b,i,i)
+            if (i%%2==1)
+            {
+                if (isDigit(x))
+                {
+                    sum=sum+as.numeric(x)
+                }
+                else if (isLetter(x))
+                {
+                    sum=sum+digitsum(position(toupper(x)))
+                }
+                else
+                {
+                    return (FALSE)
+                }
+            }
+            else
+            {
+            
+                if (isDigit(x))
+                {
+                    sum=sum+digitsum(as.numeric(x)*2)
+                }
+                else if (isLetter(x))
+                {
+                    sum=sum+digitsum(position(toupper(x))*2)
+                }
+                else
+                {
+                    return (FALSE)
+                }
+            }
+        }
+        digit = 10-(sum%%10)
+        if ((digit==as.numeric(substr(b,9,9))||(digit==10)&&(as.numeric(substr(b,9,9))==0)))
+        {
+            return (TRUE)
+        }
+        else
+        {
+            return (FALSE)
+        }
+    }
+    else
+    {
+        return (FALSE)
+    }
+}
+```
+
+###Data Cleaning
+```{r echo=FALSE}
+require(stringr)
+library(qmrparser)
+conduit.bond=read.csv("conduit bond 3.0.csv", header = TRUE) 
+conduit.bond$Principal.Amount.at.Issurance = as.numeric(gsub(",", "", conduit.bond$Principal.Amount.at.Issurance))
+conduit.bond$Interest.Rate = as.numeric(gsub(",", "", conduit.bond$Interest.Rate))
+conduit.bond$Maturity.Date = as.Date(conduit.bond$Maturity.Date,format = "%m/%d/%Y")
+conduit.bond$Dated.Date = as.Date(conduit.bond$Dated.Date,format = "%m/%d/%Y")
+conduit.bond$Links = as.character(conduit.bond$Links)
+conduit.bond$cusip.links = c("NA")
+conduit.bond$cusip.13 = c("NA")
+conduit.bond$Security.Discription=as.character(conduit.bond$Security.Discription)
+```
+
+###Download IPO Price
+```{r}
+require(rvest)
+require(httr)
+Initial.Offering.Price.Yield=c()
+Security.Detail = c()
+for (i in (1:dim(conduit.bond)[1]))
+{
+    url <- conduit.bond$Links[i]
+    cookie <- "BIGipServeremma.msrb.org=724100618.20480.0000; __utmt=1; __utma=247245968.167884672.1459959072.1459959072.1459959072.1; __utmb=247245968.1.10.1459959072; __utmc=247245968; __utmz=247245968.1459959072.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); Disclaimer2=Moodys"
+    selector.priceData <- "#ctl00_mainContentArea_securityHeaderLabelsUserControl1_initialOfferingPriceDataLabel"
+    selector.security.detail = "#ctl00_mainContentArea_securityHeaderLabelsUserControl1_topLevelIssueDataLink"
+    if(grepl('^http',url))
+    {
+        page  <-  html_session(url,add_headers(Cookie=cookie) )
+        ipo <- html_nodes( page, selector.priceData) 
+        security.de = html_nodes(page,selector.security.detail)
+        if (identical(html_text(ipo),character(0)))
+        {
+            Initial.Offering.Price.Yield = append(Initial.Offering.Price.Yield,NA)
+        }
+        else
+        {
+            Initial.Offering.Price.Yield = append(Initial.Offering.Price.Yield,html_text(ipo))
+        }
+        Security.Detail = append(Security.Detail,html_text(security.de))
+    }
+    else
+    {
+        Initial.Offering.Price.Yield = append(Initial.Offering.Price.Yield,"Error")
+        Security.Detail = append(Security.Detail,"Error")
+    }
+        print(i)
+}
+Security.Detail.Extra = Security.Detail
+Initial.Offering.Price.Yield.copy = Initial.Offering.Price.Yield
+Initial.Offering.Price.Yield.copy = as.numeric(as.character(Initial.Offering.Price.Yield.copy))
+```
+
+###Download and process CUSIP number
+```{r echo=FALSE}
+library(stringr)
+link1="http://emma.msrb.org/ImageGenerator.ashx?cusip9="
+link3="&rowNum=-1&underline=false"
+for (i in (1:nrow(conduit.bond)))
+{
+    link2 = str_sub(conduit.bond$Links[i],-33,-1)
+    conduit.bond$cusip.links[i] = paste(link1,link2,link3,sep="")
+    conduit.bond$cusip.13[i] = link2
+}
+
+
+#for (i in (1:dim(conduit.bond)[1]))
+#{
+    #dest.file=paste("CUSIP/",i,".png",sep="")
+    #download.file(conduit.bond$cusip.links[i],dest.file,mode = 'wb')
+#}
+```
+
+###Read CUSIP
+```{r echo=FALSE}
+cusip=data.frame()
+for (i in (1:7))
+{
+    name = paste(i,".csv",sep = "")
+    temp = read.csv(name,header = FALSE,stringsAsFactors = FALSE)
+    cusip = rbind(cusip,temp)
+}
+colnames(cusip) = "cusip"
+
+cusip.copy=cusip
+
+for (i in 1:nrow(cusip.copy)) #Delete the space and all punctuations in cusip number
+{
+    cusip.copy[i,1]=gsub("[[:punct:]]","",cusip.copy[i,1]) #remove all punctuations
+    cusip.copy[i,1]=gsub(" ","",cusip.copy[i,1])
+    cusip.copy[i,1]=gsub("'","",cusip.copy[i,1])
+    #cusip.copy[i,1]=gsub("FI","H",cusip.copy[i,1])
+}
+
+table(nchar(cusip.copy$cusip))
+head(cusip.copy[nchar(cusip.copy$cusip)==8,])
+```
+
+# 1. First 5 digits must be numbers
+
+###Cross patching
+####First off, the first five digits and last digits must be number
+```{r echo=FALSE}
+for (i in 1:nrow(cusip.copy))
+{
+    if(nchar(cusip.copy$cusip[i])==9)
+    {
+        cusip.copy$cusip[i]=paste(gsub("Q","0",substr(cusip.copy$cusip[i],1,5)),substr(cusip.copy$cusip[i],6,9),sep ="") #replace Q with 0
+        cusip.copy$cusip[i]=paste(gsub("B","6",substr(cusip.copy$cusip[i],1,5)),substr(cusip.copy$cusip[i],6,9),sep ="")
+        cusip.copy$cusip[i]=paste(gsub("O","0",substr(cusip.copy$cusip[i],1,5)),substr(cusip.copy$cusip[i],6,9),sep ="")
+        cusip.copy$cusip[i]=paste(gsub("G","6",substr(cusip.copy$cusip[i],1,5)),substr(cusip.copy$cusip[i],6,9),sep ="")
+        cusip.copy$cusip[i]=paste(substr(cusip.copy$cusip[i],1,8),gsub("Q","0",substr(cusip.copy$cusip[i],9,9)),sep ="")
+        cusip.copy$cusip[i]=paste(substr(cusip.copy$cusip[i],1,8),gsub("B","6",substr(cusip.copy$cusip[i],9,9)),sep ="")
+        cusip.copy$cusip[i]=paste(substr(cusip.copy$cusip[i],1,8),gsub("O","0",substr(cusip.copy$cusip[i],9,9)),sep ="")
+        cusip.copy$cusip[i]=paste(substr(cusip.copy$cusip[i],1,8),gsub("G","6",substr(cusip.copy$cusip[i],9,9)),sep ="")
+        cusip.copy$cusip[i]=paste(substr(cusip.copy$cusip[i],1,8),gsub("S","8",substr(cusip.copy$cusip[i],9,9)),sep ="")
+        #cusip.copy$cusip[i]=paste(substr(cusip.copy$cusip[i],1,5),gsub("6","B",substr(cusip.copy$cusip[i],6,8)),substr(cusip.copy$cusip[i],9,9),sep ="") #replace 6 with B between 6th to 8th digit
+    }
+}
+```
+
+###Define new CUSIP data frame
+```{r echo=FALSE}
+cusip.1=cusip.copy
+cusip.1=cbind(cusip.1,cusip.1$cusip)
+```
+
+####Check CUSIP
+```{r echo=FALSE}
+invalid.cusip.1 = c()
+for (i in (1:dim(cusip.1)[1]))
+{
+    invalid.cusip.1=append(invalid.cusip.1,checkDigit(cusip.1[i,1]))
+}
+cusip.1.invalid = cusip.1[invalid.cusip.1==FALSE,]
+dim(cusip.1.invalid)
+
+
+#Patching
+cusip.2=cusip.1
+for (i in (1:dim(cusip.1)[1]))
+{
+    if(checkDigit(cusip.2$cusip[i])==FALSE)
+       {
+            cusip.2$cusip[i]=paste(substr(cusip.2$cusip[i],1,5),gsub("Q","0",substr(cusip.2$cusip[i],6,6)),substr(cusip.2$cusip[i],7,9),sep ="")
+       }
+}
+invalid.cusip.2 = c()
+for (i in (1:dim(cusip.2)[1]))
+{
+    invalid.cusip.2=append(invalid.cusip.2,checkDigit(cusip.2[i,1]))
+}
+cusip.2.invalid = cusip.2[invalid.cusip.2==FALSE,]
+dim(cusip.2.invalid)
+
+
+
+cusip.3=cusip.2
+for (i in (1:dim(cusip.3)[1]))
+{
+    if(checkDigit(cusip.3$cusip[i])==FALSE)
+       {
+            cusip.3$cusip[i]=paste(substr(cusip.3$cusip[i],1,6),gsub("0","O",substr(cusip.3$cusip[i],7,7)),substr(cusip.3$cusip[i],8,9),sep ="")
+       }
+}
+invalid.cusip.3 = c()
+for (i in (1:dim(cusip.3)[1]))
+{
+    invalid.cusip.3=append(invalid.cusip.3,checkDigit(cusip.3[i,1]))
+}
+cusip.3.invalid = cusip.3[invalid.cusip.3==FALSE,]
+dim(cusip.3.invalid)
+
+
+
+cusip.4=cusip.3
+for (i in (1:dim(cusip.4)[1]))
+{
+    if(checkDigit(cusip.4$cusip[i])==FALSE)
+       {
+            cusip.4$cusip[i]=paste(substr(cusip.4$cusip[i],1,5),gsub("O","0",substr(cusip.4$cusip[i],6,6)),substr(cusip.4$cusip[i],7,9),sep ="")
+       }
+}
+invalid.cusip.4 = c()
+for (i in (1:dim(cusip.4)[1]))
+{
+    invalid.cusip.4=append(invalid.cusip.4,checkDigit(cusip.4[i,1]))
+}
+cusip.4.invalid = cusip.4[invalid.cusip.4==FALSE,]
+dim(cusip.4.invalid)
+
+
+
+cusip.5=cusip.4
+for (i in (1:dim(cusip.4)[1]))
+{
+    if(checkDigit(cusip.5$cusip[i])==FALSE)
+       {
+            cusip.5$cusip[i]=paste(substr(cusip.5$cusip[i],1,8),gsub("T","1",substr(cusip.5$cusip[i],9,9)),sep ="")
+       }
+}
+invalid.cusip.5 = c()
+for (i in (1:dim(cusip.5)[1]))
+{
+    invalid.cusip.5=append(invalid.cusip.5,checkDigit(cusip.5[i,1]))
+}
+cusip.5.invalid = cusip.5[invalid.cusip.5==FALSE,]
+dim(cusip.5.invalid)
+
+
+write.csv(cusip.5.invalid,"cusip.5.invalid.csv")
+```
+
+###Read corrected cusip
+```{r}
+cusip.6 = cusip.5
+cusip.corrected = read.csv("cusip.5.invalid.corrected.csv",header = TRUE,stringsAsFactors = FALSE)
+cusip.corrected$cusip = toupper(cusip.corrected$cusip)
+for(i in cusip.corrected$X)
+{
+    j=1
+    cusip.6$cusip[i] = cusip.corrected$cusip[j]
+    j=j+1
+}
+
+#Check digit
+invalid.cusip.6 = c()
+for (i in (1:dim(cusip.6)[1]))
+{
+    invalid.cusip.6=append(invalid.cusip.6,checkDigit(cusip.6[i,1]))
+}
+cusip.6.invalid = cusip.6[invalid.cusip.6==FALSE,]
+dim(cusip.6.invalid)
+```
+
+###Final Stage: piling
+```{r}
+conduit.bond.copy = conduit.bond
+conduit.bond.copy = cbind(conduit.bond.copy,Security.Detail.Extra)
+conduit.bond.copy = cbind(conduit.bond.copy,Initial.Offering.Price.Yield.copy)
+conduit.bond.copy = cbind(conduit.bond.copy,cusip.6$cusip)
+
+names = colnames(conduit.bond.copy)
+conduit.bond.copy = conduit.bond.copy[,c("State","cusip.6$cusip","Security.Discription","Security.Detail.Extra","Maturity.Date","Dated.Date","Principal.Amount.at.Issurance","Interest.Rate","Initial.Offering.Price.Yield.copy","Fitch","KBRA","Moody.s","S.P","Links","cusip.links")]
+colnames(conduit.bond.copy)
+colnames(conduit.bond.copy)[2] = "CUSIP"
+
+conduit.bond.unique.cusip = conduit.bond.copy[duplicated(conduit.bond.copy$CUSIP)==FALSE,]
+
+conduit.bond.unique.cusip$CUSIP=as.character(conduit.bond.unique.cusip$CUSIP)
+conduit.bond.unique.cusip$Security.Detail.Extra=as.character(conduit.bond.unique.cusip$Security.Detail.Extra)
+
+colnames(conduit.bond.unique.cusip)[4] = "Security.Detail"
+colnames(conduit.bond.unique.cusip)[9] = "Initial.Offering.Price.Yield"
+
+write.csv(conduit.bond.unique.cusip,"Conduit Bond.csv")
+
+conduit.bond.final = conduit.bond.unique.cusip
+```
+
+###Trading data
+```{r}
+trading.link = c()
+library(stringr)
+link4="http://emma.msrb.org/SecurityDetails/TradeActivity/"
+for (i in (1:nrow(conduit.bond.unique.cusip)))
+{
+    link5 = paste(link4,conduit.bond.unique.cusip$CUSIP,sep = "")
+    trading.link = append(trading.link,link5)
+}
+```
+
+###Trading data: scraping test
+```{r}
+library(RCurl)
+library(XML)
+require(rvest)
+require(httr)
+url <- "http://emma.msrb.org/SecurityDetails/TradeActivity/649787N87"
+cookie <- "BIGipServeremma.msrb.org=724100618.20480.0000; __utmt=1; __utma=247245968.167884672.1459959072.1459959072.1459959072.1; __utmb=247245968.1.10.1459959072; __utmc=247245968; __utmz=247245968.1459959072.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); Disclaimer2=Moodys"
+selector.priceData <- "td"
+page  <-  html_session( url, add_headers(Cookie=cookie) )
+html_nodes( page, selector.priceData) 
+       
+    
+nys="http://emma.msrb.org/SecurityView/SecurityDetailsTrades.aspx?cusip=649787N87"
+txt<-getURLContent(nys,cookie="BIGipServeremma.msrb.org=724100618.20480.0000; __utmt=1; __utma=247245968.167884672.1459959072.1459959072.1459959072.1; __utmb=247245968.1.10.1459959072; __utmc=247245968; __utmz=247245968.1459959072.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); Disclaimer2=Moodys") 
+viewstate=gsub('.*\"__VIEWSTATE\" value=\"([^\"]*)\".*','\\1',txt)
+```
+
+###S&P
+```{r}
+library(RCurl)
+require(rvest)
+page  <-  html_session("https://www.standardandpoors.com/en_US/web/guest/login?contextType=external&username=string&enablePersistentLogin=true&contextValue=%2Foam&password=sercure_string&challenge_url=https%3A%2F%2Fwww.standardandpoors.com%2Fen_US%2Fweb%2Fguest%2Flogin&request_id=770907628455280799&authn_try_count=0&locale=en_US&resource_url=https%253A%252F%252Fwww.standardandpoors.com%252Fen_US%252Fc%252Fportal%252Flogin")
+shell.exec(page$url)
+html_form(page)
+form = html_form(page)[[2]]
+
+filledform = set_values(form,'username' = "liyuchen0615@hotmail.com",'password' = "Li3315756")
+filledform
+filledform$fields[[5]]$type = 'submit'
+newpage = submit_form(page,filledform)
+html_form(newpage)
+shell.exec(newpage$url)
+
+selector.sp = ".odd .rating"
+html_node(newpage,selector.sp) 
+```
+
+###S&P
+```{r}
+library(devtools)
+library(RSelenium)
+library(XML)
+library(plyr)
+RSelenium::checkForServer()
+remDr <- remoteDriver() 
+startServer()
+remDr$open()
+url = "https://www.standardandpoors.com/en_US/web/guest/login?contextType=external&username=string&enablePersistentLogin=true&contextValue=%2Foam&password=sercure_string&challenge_url=https%3A%2F%2Fwww.standardandpoors.com%2Fen_US%2Fweb%2Fguest%2Flogin&request_id=4000362688595567249&authn_try_count=0&locale=en_US&resource_url=https%253A%252F%252Fwww.standardandpoors.com%252Fen_US%252Fc%252Fportal%252Flogin"
+remDr$navigate(url)
+infoTable <- readHTMLTable("https://www.standardandpoors.com/en_US/web/guest/home", header = TRUE)
+```
+
+###S&P's RSelenium
+```{r}
+require(RSelenium)
+RSelenium::startServer() # if needed
+remDr <- remoteDriver(browserName = "phantomjs")
+remDr$open()
+appURL <- "https://www.standardandpoors.com/en_US/web/guest/login?contextType=external&username=string&enablePersistentLogin=true&contextValue=%2Foam&password=sercure_string&challenge_url=https%3A%2F%2Fwww.standardandpoors.com%2Fen_US%2Fweb%2Fguest%2Flogin&request_id=-8661825273591902820&authn_try_count=0&locale=en_US&resource_url=https%253A%252F%252Fwww.standardandpoors.com%252Fen_US%252Fc%252Fportal%252Flogin"
+username <- "liyuchen0615@hotmail.com"
+password <- "Li3315756"
+remDr$navigate(appURL)
+userName <- remDr$findElement("css selector","#_oamloginportlet_WAR_rdsmregistrationportlet_email")
+userName$sendKeysToElement(list(username))
+passWord <- remDr$findElement("css selector","#_oamloginportlet_WAR_rdsmregistrationportlet_password")
+passWord$sendKeysToElement(list(password))
+logIn <- remDr$findElement("css selector", "#submitForm")
+logIn$clickElement() #logged in denied
+logIn2 = remDr$findElement("css",".textinfo a")
+logIn2$highlightElement()
+logIn2$clickElement()
+#Now repeat logging in process
+userName <- remDr$findElement("css selector","#_oamloginportlet_WAR_rdsmregistrationportlet_email")
+userName$sendKeysToElement(list(username))
+passWord <- remDr$findElement("css selector","#_oamloginportlet_WAR_rdsmregistrationportlet_password")
+passWord$sendKeysToElement(list(password))
+logIn <- remDr$findElement("css selector", "#submitForm")
+logIn$clickElement() #logged in successfully
+#searchbox = remDr$findElement("css","#searchTerm")
+#searchbox$sendKeysToElement(list("111"))
+#find = remDr$findElement("css","#findEntities")
+#Sys.sleep(5)
+#find$clickElement()
+#remDr$setTimeout(type = "page load", milliseconds = 50000)
+#SP = data.frame(number = as.numeric(),rating = as.character(),stringsAsFactors = FALSE)
+ptm = system.time(
+    for(i in (29624:dim(conduit.bond.final.2)[1]))#dim(conduit.bond.final.2)[1]))
+    {
+        print(i)
+        print(conduit.bond.final.2$CUSIP[i])
+        SP[i,1] = i
+        #elem = remDr$findElement("css","#es-dropdown-toggle")
+        #elem$clickElement()
+        #elem = remDr$findElement("css","#search-type-CUSIP")
+        #elem$clickElement()
+        #elem = remDr$findElement("css","#searchTerm")
+        #elem$sendKeysToElement(list(conduit.bond.final.2$CUSIP[i]))
+        #elem = remDr$findElement("css","#findEntities")
+        #elem$clickElement()
+        #remDr$refresh()
+        if(conduit.bond.final.2$S.P[i]!="-")
+        {
+            SPUrl = paste("https://www.standardandpoors.com/en_US/web/guest/ratings/details/-/instrument-details/identifier-search/searchType/CUSIP/searchTerm/",conduit.bond.final.2$CUSIP[i],sep = "")
+            remDr$navigate(SPUrl)
+            remDr$setImplicitWaitTimeout(milliseconds = 50000)
+            webElem = remDr$findElements(using = "css",value = ".odd .rating")
+            if(length(webElem)==0){
+                SP[i,2] = NA
+                print("NA")
+            }
+            else{
+                webElem = remDr$findElement(using = "css",value = ".odd .rating")
+                SP[i,2]  = as.character(webElem$getElementText())
+                remDr$setTimeout(type = "page load",milliseconds = 50000)
+                print(as.character(webElem$getElementText()))
+            }
+        }
+        else{
+            SP[i,2] = NA 
+            print("Does not have ratings")
+        }
+    } 
+)
+remDr$close()
+dim(SP)
+SP.copy = SP
+
+for(i in (1:dim(SP)[1])){
+  if (grepl("\n",SP.copy$rating[i]))
+  {
+    SP.copy$rating[i] = substr(SP.copy$rating[i],1,regexpr("\n",SP.copy$rating[i])-1)
+  }
+}
+str(SP.copy)
+write.table(SP.copy,"SP.csv",col.names = TRUE, row.names = FALSE, sep = ",")
+```
+
+###S&P Rating History !!!!Warning, this chunk of code was exucted in another RMD file.
+```{r}
+conduit.bond=read.csv("Conduit Bond - No Ratings.csv", header = TRUE)
+conduit.bond$CUSIP = as.character(conduit.bond$CUSIP)
+require(RSelenium)
+RSelenium::startServer() # if needed
+remDr <- remoteDriver(browserName = "phantomjs")
+remDr$open()
+Sys.sleep(5)
+#appURL <- "https://www.standardandpoors.com/en_US/web/guest/login?contextType=external&username=string&enablePersistentLogin=true&contextValue=%2Foam&password=sercure_string&challenge_url=https%3A%2F%2Fwww.standardandpoors.com%2Fen_US%2Fweb%2Fguest%2Flogin&request_id=-8661825273591902820&authn_try_count=0&locale=en_US&resource_url=https%253A%252F%252Fwww.standardandpoors.com%252Fen_US%252Fc%252Fportal%252Flogin"
+#username <- "liyuchen0615@hotmail.com"
+#password <- "Li3315756"
+remDr$navigate(appURL)
+Sys.sleep(5)
+userName <- remDr$findElement("css selector","#_oamloginportlet_WAR_rdsmregistrationportlet_email")
+userName$sendKeysToElement(list(username))
+passWord <- remDr$findElement("css selector","#_oamloginportlet_WAR_rdsmregistrationportlet_password")
+passWord$sendKeysToElement(list(password))
+logIn <- remDr$findElement("css selector", "#submitForm")
+logIn$clickElement() #logged in denied
+logIn2 = remDr$findElement("css",".textinfo a")
+logIn2$highlightElement()
+logIn2$clickElement()
+Sys.sleep(5)
+#Now repeat logging in process
+userName <- remDr$findElement("css selector","#_oamloginportlet_WAR_rdsmregistrationportlet_email")
+userName$sendKeysToElement(list(username))
+passWord <- remDr$findElement("css selector","#_oamloginportlet_WAR_rdsmregistrationportlet_password")
+passWord$sendKeysToElement(list(password))
+logIn <- remDr$findElement("css selector", "#submitForm")
+logIn$clickElement() #logged in successfully
+
+#SP = c()
+remDr$setImplicitWaitTimeout(milliseconds = 5000)
+remDr$setTimeout(type = "page load",milliseconds = 50000)
+start = length(SP)+1
+ptm = system.time(
+    for(i in (start:32011)){
+        print(i)
+        print(conduit.bond$CUSIP[i])
+        SPUrl = paste("https://www.standardandpoors.com/en_US/web/guest/ratings/details/-/instrument-details/identifier-search/searchType/CUSIP/searchTerm/",conduit.bond$CUSIP[i],sep = "")
+        remDr$navigate(SPUrl)
+        webElem = remDr$findElements(using = 'css',value = 'td.rating')
+        if(length(webElem)!=0){
+            regulartory.disclosures = FALSE
+            for(i in (1:length(webElem))){
+                regulartory.disclosures = regulartory.disclosures || grepl("Regulatory Disclosure",webElem[[i]]$getElementText())
+            }
+            if(regulartory.disclosures){
+                webElem = remDr$findElements(value = '//*[(@id = "_instrumentdetailsportlet_WAR_rdsmratingsactionportlet_Identifier_Details")]//a')
+                if(length(webElem)==0){
+                    SP = append(SP,"NA")
+                    print("Does not have ratings")
+                }
+                else{
+                    webElem = webElem[[1]]
+                    remDr$navigate(webElem$getElementAttribute('href')[[1]])
+                    webElem = remDr$findElements(using = 'css',value = '#ratingHistoryToggle')
+                    if(length(webElem)!=0){
+                        webElem = webElem[[1]]
+                        webElem$clickElement()
+                        webElem = remDr$findElements(using = 'css',value = '#ratingHistoryTable')
+                        if(length(webElem)!=0){
+                            webElem = webElem[[1]]
+                            SP  = append(SP,as.character(webElem$getElementText()))
+                            print(as.character(webElem$getElementText()))
+                        }
+                        else{}
+                    }
+                    else{}
+                }
+            }
+            else{
+                date = remDr$findElement(using = 'css',value ='.odd .rating+ .date' )
+                SP = append(SP,paste(as.character(webElem[[1]]$getElementText()),date$getElementText()[[1]],sep = "\n"))
+                print(paste(as.character(webElem[[1]]$getElementText()),date$getElementText()[[1]],sep = "\n"))
+            }
+        }
+        else{
+            SP = append(SP,"NA")
+            print("Does not have ratings")
+        }
+        if(i%%199==0){
+        Sys.sleep(runif(1,5,10))
+        }
+    }
+)
+length(SP)
+
+remDr$refresh()
+remDr$close()
+SP.copy = as.data.frame(SP,stringsAsFactors = F)
+SP.copy = cbind(SP.copy,conduit.bond.unique.cusip$CUSIP)
+colnames(SP.copy) = c("Rating","CUSIP")
+SP.copy$Rating = gsub("\n","###",SP.copy$Rating)
+
+str(SP.copy)
+write.table(SP.copy,"SP - Rating History.csv",col.names = TRUE, row.names = FALSE, sep = ",")
+```
+
+###S&P Rating History - Clearning and Compiling
+```{r}
+SP.historic.copy =read.csv("SP - Rating History.csv",header = T,stringsAsFactors = F)
+SP.historic = SP.historic.copy
+SP.temp = data.frame(a=character(),b=character(),c=character(),d=character(),e=character(),f=character(),stringsAsFactors = F)
+
+sp.length = c()
+for(i in (1:32011)){
+    sp.length = append(sp.length,length(strsplit(SP.historic.copy$Rating[i],"###")[[1]]))
+}
+sp.length.table = as.data.frame(table(sp.length),stringsAsFactors = F)
+
+SP.total.row = 0
+for(i in (1:dim(table)[1])){
+    SP.total.row = SP.total.row+as.numeric(sp.length.table$sp.length[i])*as.numeric(sp.length.table$Freq[i])
+}
+###Need to delete number of "Rating Rating Date Regulatory Identifiers CreditWatch/ Outlook CreditWatch/ Outlook Date"
+SP.total.row - (32011 - head(sp.length.table$Freq,1))
+
+for(i in (1:32011)){
+    print(i)
+    if(is.na(SP.historic$Rating[i])){
+        SP.temp=rbind(SP.temp,c(SP.historic.copy$CUSIP[i],NA,NA,NA,NA,NA),stringsAsFactors = F)
+    }
+    else{
+        if(grepl("Regulatory Identifiers",strsplit(SP.historic.copy$Rating[i],"###"))){
+            sp.length = length(strsplit(SP.historic.copy$Rating[i],"###")[[1]])
+            for(j in (2:sp.length)){
+                sp.rating = strsplit(strsplit(SP.historic.copy$Rating[i],"###")[[1]][j]," ")[[1]][1]
+                sp.date = strsplit(strsplit(SP.historic.copy$Rating[i],"###")[[1]][j]," ")[[1]][2]
+                sp.regular = strsplit(strsplit(SP.historic.copy$Rating[i],"###")[[1]][j]," ")[[1]][3]
+                sp.creditwatch = strsplit(strsplit(SP.historic.copy$Rating[i],"###")[[1]][j]," ")[[1]][4]
+                sp.creditwatch.date = strsplit(strsplit(SP.historic.copy$Rating[i],"###")[[1]][j]," ")[[1]][5]
+                SP.temp=rbind(SP.temp,c(SP.historic.copy$CUSIP[i],sp.rating,sp.date,sp.regular,sp.creditwatch,sp.creditwatch.date),stringsAsFactors = F)
+                
+            }
+        }
+        else{
+            sp.rating = strsplit(SP.historic.copy$Rating[i],"###")[[1]][1]
+            sp.date = strsplit(SP.historic.copy$Rating[i],"###")[[1]][2]
+            SP.temp=rbind(SP.temp,c(SP.historic.copy$CUSIP[i],sp.rating,sp.date,NA,NA,NA),stringsAsFactors = F)
+        }
+    }
+}
+
+colnames(SP.temp) = c("CUSIP","Rating","Date","Regulartory","Credit","Credit.Date")
+```
+
+
+###Moody's
+```{r}
+library(RCurl)
+library(rvest)
+
+page.moody = html_session("https://www.moodys.com")
+shell.exec(page.moody$url)
+html_form(page.moody)
+form.moody = html_form(page.moody)[[1]]
+filled.form.moody = set_values(form.moody,'MdcPassword'="liyuchen0615@hotmail.com",'MdcPassword'="li3315756",form.moody$fields[22]="86652QAT9")
+```
+
+###Moody's RSelenium
+```{r}
+require(RSelenium)
+checkForServer()
+RSelenium::startServer() # if needed
+remDr <- remoteDriver(browserName = "firefox")
+remDr$open()
+appURL <- "http://www.moodys.com"
+username <- "liyuchen0615@hotmail.com"
+password <- "li3315756"
+remDr$navigate(appURL)
+logIn <- remDr$findElement("id", "LoginText")
+logIn$clickElement()
+userName <- remDr$findElement("id", "MdcUserName")
+userName$sendKeysToElement(list(username))
+passWord <- remDr$findElement("id", "MdcPassword")
+passWord$sendKeysToElement(list(password))
+logIn <- remDr$findElement("id", "LoginImageButton")
+logIn$clickElement() #Successfully logged in
+#Moody = c()
+ptm = system.time(
+    for(i in (1:dim(conduit.bond.final)[1]))
+    {
+          print(i)
+          print(conduit.bond.final$CUSIP[i])
+          if(conduit.bond.final$Moody.s[i]!="-"){
+          searchID = '//*[(@id = "kw")]'
+          webElem<-remDr$findElement(value = searchID)
+          webElem$clearElement()
+          webElem$sendKeysToElement(list(conduit.bond.final$CUSIP[i]))
+          searchBar = '//*[(@id = "searchBarLink")]'
+          search = remDr$findElement(value = searchBar)
+          search$clickElement()
+          #remDr$refresh()
+          remDr$setTimeout(type = "page load",milliseconds = 100000)
+          remDr$refresh()
+          webElem = remDr$findElements(using = "css",value = ".mdcTableBody .mdcRating")
+          if(length(webElem)==0){
+            Moody=append(Moody,NA)
+            print("NA")
+          }
+          else{
+            webElem = remDr$findElement(using = "css",value = ".mdcTableBody .mdcRating")
+            Moody=append(Moody,as.character(webElem$getElementText()))
+            remDr$setTimeout()
+            print(as.character(webElem$getElementText()))
+          }
+        }
+          else{
+            Moody = append(Moody,NA)
+            print("NA")
+        }
+    } 
+)
+remDr$close()
+dim(Moody)
+Moody = as.data.frame(Moody)
+write.table(Moody,"Moody.csv",col.names = TRUE,row.names = FALSE,sep = ",")
+```
+
+###Moody's rating history
+```{r}
+require(RSelenium)
+library(rvest)
+checkForServer()
+RSelenium::startServer() # if needed
+remDr <- remoteDriver(browserName = "phantomjs")
+remDr$open()
+appURL <- "http://www.moodys.com"
+username <- "liyuchen0615@hotmail.com"
+password <- "li3315756"
+remDr$navigate(appURL)
+logIn <- remDr$findElement("id", "LoginText")
+logIn$clickElement()
+userName <- remDr$findElement("id", "MdcUserName")
+userName$sendKeysToElement(list(username))
+passWord <- remDr$findElement("id", "MdcPassword")
+passWord$sendKeysToElement(list(password))
+logIn <- remDr$findElement("id", "LoginImageButton")
+logIn$clickElement() #Successfully logged in
+#Moody = c()
+for(i in (length(Moody)+1:32011))
+{
+            if(i%%100==0){
+                Sys.sleep(runif(1,10,20))
+            }
+            print(i)
+            print(conduit.bond.final$CUSIP[i])
+          #if(conduit.bond.unique.cusip$Moody.s[i]!="-"){
+            webElem<-remDr$findElement(value = '//*[(@id = "kw")]')
+            webElem$clearElement()
+            webElem$sendKeysToElement(list(conduit.bond.final$CUSIP[i]))
+            search = remDr$findElement(value = '//*[(@id = "searchBarLink")]')
+            search$clickElement()
+            #remDr$refresh()
+            remDr$setTimeout(type = "page load",milliseconds = 100000)
+            webElem = remDr$findElements(using = "css",value = ".mdcTableBody .mdcRating")
+            if(length(webElem)!=0){
+                webElem = remDr$findElements(using = "css",value = '.mdcTabLastItem')
+                if(length(webElem)!=0){
+                    webElem = webElem[[1]]#remDr$findElement(using = "css",value = '.mdcTabLastItem')
+                    webElem$clickElement()
+                    webElem = remDr$findElements(using='css',value = '#mdcAGRDHistory > div.mdcTableBody')
+                    if(length(webElem)==0){
+                        Moody=append(Moody,NA)
+                        print("NA")
+                    }
+                    else{
+                        webElem = webElem[[1]]#remDr$findElement(value = '//*[@id="mdcAGRDHistory"]/div[2]/table/tbody')
+                        webElem$highlightElement()
+                        Moody=append(Moody,as.character(webElem$getElementText()))
+                        print(as.character(webElem$getElementText()))
+                    }
+                }
+                else{ #Expired Bond
+                    webElem = remDr$findElements(using='css',value = '.mdcTableBody')[[2]]
+                    webElem$highlightElement()
+                    Moody=append(Moody,as.character(webElem$getElementText()))
+                    print(as.character(webElem$getElementText()))
+                }
+            }
+            else{
+                Moody = append(Moody,"NA")
+                print("NA")
+            }
+}
+#remDr$close()
+length(Moody)
+
+moody.copy = Moody
+moody.copy = as.data.frame(moody.copy)
+colnames(moody.copy) = "Rating History"
+str(moody.copy)
+moody.copy$`Rating History` = as.character(moody.copy$`Rating History`)
+moody.copy$`Rating History` = gsub("\n","###",moody.copy$`Rating History`)
+write.table(moody.copy,"Moody - Rating History.csv",col.names = TRUE,row.names = FALSE)
+```
+
+###Moody Rating History - Clearning and Compiling
+```{r}
+moody.copy=cbind.data.frame(moody.copy,conduit.bond.unique.cusip$CUSIP,stringsAsFactors = F)
+colnames(moody.copy) = c("Rating","CUSIP")
+moody.historic = data.frame("CUSIP" = character(),"Rating" = character(),"Date" = character(),"Type/Action" = character())
+
+moody.length = c()
+for(i in (1:32011)){
+    moody.length = append(moody.length,length(strsplit(moody.copy$Rating[i],"###")[[1]]))
+}
+moody.length.table = as.data.frame(table(moody.length),stringsAsFactors = F)
+
+moody.total.row = 0
+for(i in (1:dim(moody.length.table)[1])){
+    moody.total.row = moody.total.row + as.numeric(moody.length.table$moody.length[i])*as.numeric(moody.length.table$Freq[i])
+}
+
+for(i in (1:32011)){
+    cusip = moody.copy$CUSIP[i]
+    if(moody.copy$Rating[i]!="NA"){
+        print(i)
+        length = length(strsplit(moody.copy$Rating[i],"###")[[1]])
+        for(j in (1:length)){
+            length.1 = length(strsplit(strsplit(moody.copy$Rating[i],"###")[[1]][j]," ")[[1]])
+            Date = paste(head(strsplit(strsplit(moody.copy$Rating[i],"###")[[1]][j]," ")[[1]],3),collapse = "-")
+            Rating = strsplit(strsplit(moody.copy$Rating[i],"###")[[1]][j]," ")[[1]][4]
+            Type = paste(tail(strsplit(strsplit(moody.copy$Rating[i],"###")[[1]][j]," ")[[1]],(length.1)-4),collapse = "/")
+            moody.historic = rbind.data.frame(moody.historic,c(cusip,Rating,Date,Type),stringsAsFactors = F)
+        } 
+    }
+    else{
+        print(i)
+        moody.historic = rbind.data.frame(moody.historic,c(cusip,"NA","NA","NA"),stringsAsFactors = F)
+    }
+}
+colnames(moody.historic) = c("CUSIP","Rating","Date","Type/Action")
+moody.historic.copy = moody.historic
+
+for(i in (1:dim(moody.historic.copy)[1])){
+    if(grepl("\\d/",moody.historic.copy$`Type/Action`[i]) | grepl("(sf)",moody.historic.copy$`Type/Action`[i])){
+        print(i)
+        moody.historic.copy$Rating[i] = paste(moody.historic.copy$Rating[i],strsplit(moody.historic.copy$`Type/Action`[i],"/")[[1]][1])
+        moody.historic.copy$`Type/Action`[i] = paste(tail(strsplit(moody.historic.copy$`Type/Action`[i],"/")[[1]],length(strsplit(moody.historic.copy$`Type/Action`[i],"/")[[1]])-1),collapse = "/")
+    }
+}
+```
+
+###Fitch
+```{r}
+page.fitch = html_session("https://www.fitchratings.com/site/fitch-home/uspf")
+shell.exec(page.fitch$url)
+html_form(page.fitch)
+form.moody = html_form(page.moody)[[1]]
+filled.form.moody = set_values(form.moody,'MdcPassword'="liyuchen0615@hotmail.com",'MdcPassword'="li3315756",form.moody$fields[22]="86652QAT9")
+```
+
+###Municiplebond.com
+```{r}
+page.muni = html_session("https://my.municipalbonds.com/premium_login/")
+shell.exec(page.muni$url)
+html_form(page.muni)
+
+form.muni1 = html_form(page.muni)[[3]]
+form.muni1
+filled.form.muni1 = set_values(form.muni1,'data[User][email]'="liyuchen0615@hotmail.com",'data[User][password]'="li3315756")
+filled.form.muni1
+
+form.muni2 = html_form(page.muni)[[2]]
+form.muni2
+filled.form.muni2 = set_values(form.muni2,'cusip'="86652QAT9")
+filled.form.muni2
+
+page.muni.1 = submit_form(page.muni,filled.form.muni1)#,filled.form.muni2))
+shell.exec(page.muni.1$url)
+
+selector.muni = "td:nth-child(4) div+ div"
+```
+
+###Fitch Rselenium
+```{r}
+fitch = data.frame(number = as.numeric(),rating = as.character(),stringsAsFactors = FALSE)
+require(RSelenium)
+RSelenium::startServer() # if needed
+remDr <- remoteDriver(browserName = "phantomjs")
+remDr$open()
+appURL <- "https://www.fitchratings.com/jsp/general/login/LoginController.faces"
+remDr$navigate(appURL)
+username <- "ralf0615"
+password <- "li3315756"
+userName <- remDr$findElement("css selector","#userName")
+userName$sendKeysToElement(list(username))
+passWord <- remDr$findElement("css selector","#password")
+passWord$sendKeysToElement(list(password))
+logIn <- remDr$findElement("css selector", "#subviewHeader\\:headerJsfForm\\:submit") #double backslash instead of single
+logIn$clickElement() #logged in successfully
+#011903DH1
+elem = remDr$findElement("css","#search")
+elem$sendKeysToElement(list("111"))
+elem = remDr$findElement("css",".clear-search")
+elem$clickElement()
+Sys.sleep(5)
+ptm = system.time(
+    for(i in (1:dim(conduit.bond.final.2)[1]))
+    {
+        print(i)
+        print(conduit.bond.final.2$CUSIP[i])
+        fitch[i,1] = i
+        if(conduit.bond.final.2$Fitch[i]!="-")
+        {
+            elem = remDr$findElement("css","#newNtt")
+            elem$sendKeysToElement(list(conduit.bond.final.2$CUSIP[i]))
+            elem = remDr$findElement("css",".itemBtn")
+            elem$clickElement()
+            remDr$setImplicitWaitTimeout(milliseconds = 100000)
+            webElem = remDr$findElements(using = "css",value = ".rating")
+            if(length(webElem)==0){
+                fitch[i,2] = NA
+                print("NA")
+            }
+            else{
+                webElem = remDr$findElement(using = "css",value = ".rating")
+                fitch[i,2]  = as.character(webElem$getElementText())
+                remDr$setTimeout(type = "page load",milliseconds = 50000)
+                print(as.character(webElem$getElementText()))
+            }
+        }
+        else{
+            fitch[i,2] = NA
+            print("NA")
+        }
+    } 
+)
+remDr$close()
+dim(fitch)
+write.table(fitch,"Fitch.csv",col.names = TRUE,row.names = FALSE,sep = ",")
+```
+
+###Fitch Current Rating with Date
+```{r}
+require(RSelenium)
+RSelenium::startServer() # if needed
+remDr <- remoteDriver(browserName = "phantomjs")
+remDr$open()
+appURL <- "https://www.fitchratings.com/jsp/general/login/LoginController.faces"
+remDr$navigate(appURL)
+username <- "ralf0615"
+password <- "li3315756"
+userName <- remDr$findElement("css selector","#userName")
+userName$sendKeysToElement(list(username))
+passWord <- remDr$findElement("css selector","#password")
+passWord$sendKeysToElement(list(password))
+logIn <- remDr$findElement("css selector", "#subviewHeader\\:headerJsfForm\\:submit") #double backslash instead of single
+logIn$clickElement() #logged in successfully
+
+elem = remDr$findElement("css","#search")
+elem$sendKeysToElement(list("111"))
+elem = remDr$findElement("css",".clear-search")
+elem$clickElement()
+remDr$setImplicitWaitTimeout(milliseconds = 4000)
+remDr$setTimeout(type = "page load",milliseconds = 10000)
+#Fitch = c()
+L = length(Fitch)+1
+ptm = system.time(
+    for(i in (L:32011))
+    {
+        if(i%%98==0){
+            Sys.sleep(runif(1,5,6))
+        }
+        print(i)
+        print(conduit.bond.final$CUSIP[i])
+        if(conduit.bond.unique.cusip$Fitch[i]!="-"){
+            elem = remDr$findElement("css","#newNtt")
+            elem$sendKeysToElement(list(conduit.bond.final$CUSIP[i]))
+            elem = remDr$findElement("css",".itemBtn")
+            elem$clickElement()
+            webElem = remDr$findElements(using = "css",value = ".iss_bizcard_dat")
+            if(length(webElem)==0){
+                Fitch = append(Fitch,"NA")
+                print("Does not have ratings")
+            }
+            else{
+                webElem = remDr$findElement(using = "css",value = ".iss_bizcard_dat")
+                Fitch = append(Fitch,as.character(webElem$getElementText()))
+                print(as.character(webElem$getElementText()))
+            } 
+        }
+        else{
+            Fitch = append(Fitch,"NA")
+            print("Does not have ratings")
+        }
+        
+    }
+)
+#remDr$close()
+length(Fitch)
+
+
+write.table(Fitch.copy,"Fitch - Rating History.csv",col.names = TRUE,row.names = FALSE,sep = ",")
+```
+
+###Fitch Rating History - Clearning and Compiling
+```{r}
+Fitch.copy = read.csv("Fitch - Rating History.csv",col.names = T,stringsAsFactors = F)
+Fitch.copy = cbind(Fitch.copy,conduit.bond.unique.cusip$CUSIP)
+colnames(Fitch.copy) = c("Rating","CUSIP")
+Fitch.copy$Rating = gsub("\n","###",Fitch.copy$Rating)
+temp = character(32011)
+temp2 = character(32011)
+Fitch.copy=cbind(Fitch.copy,temp)
+Fitch.copy=cbind(Fitch.copy,temp2)
+str(Fitch.copy)
+Fitch.copy$CUSIP = as.character(Fitch.copy$CUSIP)
+Fitch.copy$temp = as.character(Fitch.copy$temp)
+Fitch.copy$temp2 = as.character(Fitch.copy$temp2)
+Fitch.copy$Rating = as.character(Fitch.copy$Rating)
+
+
+string.length = c()
+for(i in (1:32011)){
+    string.length = append(string.length,length(strsplit(Fitch.copy$Rating[i],"###")[[1]]))
+}
+
+for(i in (1:32011)){
+    has.amount = grepl("Amount",toString(strsplit(Fitch.copy$Rating[i],"###")[[1]]))
+    has.amount.coupon = has.amount | grepl("Coupon",toString(strsplit(Fitch.copy$Rating[i],"###")[[1]]))
+    if(has.amount.coupon){
+        Fitch.copy$temp2[i] = toString(tail(strsplit(Fitch.copy$Rating[i],"###")[[1]],5))
+        Fitch.copy$temp[i] = toString(head(strsplit(Fitch.copy$Rating[i],"###")[[1]],string.length[i]-5))
+    }
+    else{
+        Fitch.copy$temp2[i] = toString(tail(strsplit(Fitch.copy$Rating[i],"###")[[1]],4))
+        Fitch.copy$temp[i] = toString(head(strsplit(Fitch.copy$Rating[i],"###")[[1]],string.length[i]-4))
+    }
+}
+
+string.length.temp = c()
+for(i in (1:32011)){
+    string.length.temp = append(string.length.temp,length(strsplit(Fitch.copy$temp[i],",")[[1]]))
+}
+
+###Piling Fitch Historic Rating
+Fitch.historic = data.frame("CUSIP" = character(),"Rating" = character(),"Date" = character(),"Action" = character(),"Misc" = character())
+for(i in (1:32011)){
+    if(!is.na(Fitch.copy$Rating[i])){
+        print(i)
+        for(j in (1:string.length.temp[i])){
+            date.index = which(grepl("\\d\\d-\\w\\w\\w-\\d\\d\\d\\d",strsplit(strsplit(Fitch.copy$temp[i],",")[[1]][j]," ")[[1]])==TRUE)
+            length = length(strsplit(strsplit(Fitch.copy$temp[i],",")[[1]][j]," ")[[1]])
+            rating = toString(head(strsplit(strsplit(Fitch.copy$temp[i],",")[[1]][j]," ")[[1]],date.index-1))
+            date = toString(strsplit(strsplit(Fitch.copy$temp[i],",")[[1]][j]," ")[[1]][date.index])
+            action = toString(tail(strsplit(strsplit(Fitch.copy$temp[i],",")[[1]][j]," ")[[1]],length - date.index))
+            Fitch.historic = rbind.data.frame(Fitch.historic,c(Fitch.copy$CUSIP[i],rating,date,action,Fitch.copy$temp2[i]),stringsAsFactors = F)
+        }
+    }
+    else{
+        print(i)
+        Fitch.historic = rbind.data.frame(Fitch.historic,c(Fitch.copy$CUSIP[i],"NA","NA","NA","NA"),stringsAsFactors = F)
+    }
+}
+colnames(Fitch.historic) = c("CUSIP","Rating","Date","Action","Misc")
+table(Fitch.historic$Date)
+table(Fitch.historic$Rating)
+for(i in (1:dim(Fitch.historic)[1])){
+    Fitch.historic$Action[i]  =  gsub(",","",Fitch.historic$Action[i])
+    Fitch.historic$Rating[i]  =  gsub(",","",Fitch.historic$Rating[i])
+}
+```
+
+###Read ratings back to RMD
+```{r}
+Fitch = read.csv("Fitch.csv",header = TRUE,sep = ",")
+Moody = read.csv("Moody.csv",header = TRUE,sep = ",")
+SP = read.csv("SP.csv",header = TRUE,sep = ",")
+conduit.bond.final = conduit.bond.unique.cusip
+#for(i in (1:dim(conduit.bond.final)[1])){
+    #conduit.bond.final$Fitch[i] = Fitch$rating[i]
+    #conduit.bond.final$Moody.s[i] = Moody$Moody[i]
+    #conduit.bond.final$S.P[i] = SP$rating[i]
+#}
+conduit.bond.final$Fitch = Fitch$rating
+conduit.bond.final$Moody.s = Moody$Moody
+conduit.bond.final$S.P = SP$rating
+write.table(conduit.bond.final,"Conduit Bond 5-8.csv",col.names = TRUE,row.names = FALSE,sep = ",")
+```
+
+###Conduit Bond - Rating History
+```{r}
+library(plyr)
+str(moody.historic.copy)
+str(Fitch.historic)
+str(SP.temp)
+#198524
+final = data.frame(a=character(266666),b=character(266666),c=character(266666),d=character(266666),e=character(266666),f=character(266666),g=character(266666),h=character(266666),i=character(266666),j=character(266666),k=character(266666),l=character(266666),m=character(266666),n=character(266666),o=character(266666),p=character(266666),q=character(266666),r=character(266666),s=character(266666),t=character(266666),u=character(266666),v=character(266666),stringsAsFactors = F)
+index = 1
+time.final = system.time(
+    for(i in (1:32011)){
+    print(i)
+    a.1=conduit.bond.unique.cusip$State[i]
+    b.1=conduit.bond.unique.cusip$CUSIP[i]
+    c.1=conduit.bond.unique.cusip$Security.Discription[i]
+    d.1=conduit.bond.unique.cusip$Security.Detail[i]
+    e.1=conduit.bond.unique.cusip$Maturity.Date[i]
+    f.1=conduit.bond.unique.cusip$Dated.Date[i]
+    g.1=conduit.bond.unique.cusip$Principal.Amount.at.Issurance[i]
+    h.1=conduit.bond.unique.cusip$Interest.Rate[i]
+    ipo=conduit.bond.unique.cusip$Initial.Offering.Price.Yield[i]
+    emma.link=as.character(conduit.bond.unique.cusip$Links[i])
+    moody.index = which(moody.historic.copy$CUSIP==b.1)
+    fitch.index = which(Fitch.historic$CUSIP==b.1)
+    sp.index = which(SP.temp$CUSIP==b.1)
+    for(J in (1:length(fitch.index))){
+        final$a[index]=as.character(a.1)
+        final$b[index]=as.character(b.1)
+        final$c[index]=as.character(c.1)
+        final$d[index]=as.character(d.1)
+        final$e[index]=as.character(e.1)
+        final$f[index]=as.character(f.1)
+        final$g[index]=as.character(g.1)
+        final$h[index]=as.character(h.1)
+        final$i[index]=ipo
+        final$j[index]=Fitch.historic$Rating[fitch.index[J]]
+        final$k[index]=Fitch.historic$Date[fitch.index[J]]
+        final$l[index]=Fitch.historic$Action[fitch.index[J]]
+        final$m[index]=Fitch.historic$Misc[fitch.index[J]]
+        final$v[index]=emma.link
+        index = index+1
+    }
+    for(K in (1:length(moody.index))){
+        final$a[index]=as.character(a.1)
+        final$b[index]=as.character(b.1)
+        final$c[index]=as.character(c.1)
+        final$d[index]=as.character(d.1)
+        final$e[index]=as.character(e.1)
+        final$f[index]=as.character(f.1)
+        final$g[index]=as.character(g.1)
+        final$h[index]=as.character(h.1)
+        final$i[index]=ipo
+        final$n[index]=moody.historic.copy$Rating[moody.index[K]]
+        final$o[index]=moody.historic.copy$Date[moody.index[K]]
+        final$p[index]=moody.historic.copy$`Type/Action`[moody.index[K]]
+        final$v[index]=emma.link
+        index = index+1
+    }
+    for(S in (1:length(sp.index))){
+        final$a[index]=as.character(a.1)
+        final$b[index]=as.character(b.1)
+        final$c[index]=as.character(c.1)
+        final$d[index]=as.character(d.1)
+        final$e[index]=as.character(e.1)
+        final$f[index]=as.character(f.1)
+        final$g[index]=as.character(g.1)
+        final$h[index]=as.character(h.1)
+        final$i[index]=ipo
+        final$q[index]=SP.temp$Rating[sp.index[S]]
+        final$r[index]=SP.temp$Date[sp.index[S]]
+        final$s[index]=SP.temp$Regulartory[sp.index[S]]
+        final$t[index]=SP.temp$Credit[sp.index[S]]
+        final$u[index]=SP.temp$Credit.Date[sp.index[S]]
+        final$v[index]=emma.link
+        index = index+1
+    }
+    }
+)
+
+final.copy <- data.frame(lapply(final, as.character), stringsAsFactors=FALSE)
+final.copy = final.copy[1:200000,]
+for(i in (1:dim(final.copy)[1])){
+    for(j in (1:22)){
+        if(nchar(final.copy[i,j])==0|is.na(final.copy[i,j])){
+            final.copy[i,j] = "NA"
+        }
+    }
+}
+final.copy.unique = unique(final.copy)
+final.copy.unique$CUSIP = paste("#",final.copy.unique$CUSIP)
+
+col.name = colnames(read.csv("Conduit Bond - Historical Rating.csv",header = T,stringsAsFactors = F))
+colnames(final.copy.unique) = col.name
+write.csv(final.copy.unique,"Conduit Bond - 5-24-16.csv")
+```
+
+for(i in (1:32011)){
+    print(i)
+    a=conduit.bond.unique.cusip$State[i]
+    b=conduit.bond.unique.cusip$CUSIP[i]
+    c=conduit.bond.unique.cusip$Security.Discription[i]
+    d=conduit.bond.unique.cusip$Security.Detail[i]
+    e=conduit.bond.unique.cusip$Maturity.Date[i]
+    f=conduit.bond.unique.cusip$Dated.Date[i]
+    g=conduit.bond.unique.cusip$Principal.Amount.at.Issurance[i]
+    h=conduit.bond.unique.cusip$Interest.Rate[i]
+    ipo=conduit.bond.unique.cusip$Initial.Offering.Price.Yield[i]
+    link=as.character(conduit.bond.unique.cusip$Links[i])
+    moody.index = which(moody.historic.copy$CUSIP==b)
+    fitch.index = which(Fitch.historic$CUSIP==b)
+    sp.index = which(SP.temp$CUSIP==b)
+    for(j in (1:length(fitch.index))){
+        temp.fitch = data.frame(a,b,c,d,e,f,g,h,ipo,Fitch.historic$Rating[fitch.index[j]],Fitch.historic$Date[fitch.index[j]],Fitch.historic$Action[fitch.index[j]],Fitch.historic$Misc[fitch.index[j]],NA,NA,NA,NA,NA,NA,NA,NA,link)
+        colnames(temp.fitch) = c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v")
+        final = rbind.fill(final,temp.fitch)
+    }
+    for(k in (1:length(moody.index))){
+        temp.moody = data.frame(a,b,c,d,e,f,g,h,ipo,NA,NA,NA,NA,moody.historic.copy$Rating[moody.index[k]],moody.historic.copy$Date[moody.index[k]],moody.historic.copy$`Type/Action`[moody.index[k]],NA,NA,NA,NA,NA,link)
+        colnames(temp.moody) = c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v")
+        final = rbind.fill(final,temp.moody)
+    }
+    for(s in (1:length(sp.index))){
+        temp.sp = data.frame(a,b,c,d,e,f,g,h,ipo,NA,NA,NA,NA,NA,NA,NA,SP.temp$Rating[sp.index[s]],SP.temp$Date[sp.index[s]],SP.temp$Regulartory[sp.index[s]],SP.temp$Credit[sp.index[s]],SP.temp$Credit.Date[sp.index[s]],link)
+        colnames(temp.sp) = c("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v")
+        final = rbind.fill(final,temp.sp)
+    }
+    }

@@ -1,0 +1,22 @@
+To get portfolio holdings:
+
+1. Navigate to the page
+Via command line
+JNK US Equity > PORT HD
+Via menu
+JNK US Equity > 19) Fund holdings based analytics > 13) PORT HD Portfolio Holdings
+
+2. Visualize the required information
+Now you are in Main View. Set the following options:
+- by: None 
+- As Of: the required date
+Refresh. You should see all the holdings plain and simple, not grouped by something.
+
+3. Add information
+Click on the "Settings" button (top right, looks like a machine cog) > Add/Remove Fields. Select CUSIP. Refresh and verify that there is a column for CUSIP.
+
+4. Save
+Go to 12) Actions > Generate Report > Current Tab (Unformatted xls). Save as TICKER-DATE.xls (for instance, JNK-20160601.xls)
+
+Tickers: JNK, HYG
+Dates: Last day of the month starting in 1/2007 (or later, if the fund was started in a later month. Both funds were started in 2007).
